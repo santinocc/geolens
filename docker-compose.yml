@@ -1,0 +1,16 @@
+services:
+  titiler:
+    image: ghcr.io/developmentseed/titiler:2.4.0
+    ports:
+      - "127.0.0.1:8000:80"
+    environment:
+      WEB_CONCURRENCY: "2"   # two worker processes is plenty locally
+
+  web:
+    image: nginx:1.27-alpine
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+    depends_on:
+      - titiler

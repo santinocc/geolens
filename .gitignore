@@ -1,0 +1,16 @@
+# Local environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node
+node_modules/
+.next/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
