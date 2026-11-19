@@ -14,3 +14,27 @@ services:
       - ./web:/usr/share/nginx/html:ro
     depends_on:
       - titiler
+
+  # Spatial database. Port 5433 on the host, because 5432 is often taken
+  # by another local Postgres.
+  db:
+    build: ./db
+    environment:
+      POSTGRES_USER: geolens
+      POSTGRES_PASSWORD: geolens   # local development only, not a real secret
+      POSTGRES_DB: geolens
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Files here run once, in name order, when the volume is empty.
+      # To run them again: docker compose down -v
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U geolens -d geolens"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  pgdata:
