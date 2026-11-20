@@ -13,10 +13,10 @@ Stage 2 of 5 is finished. This list shows only what is actually done.
 - [x] A seed script loads up to 100 real, mostly cloud-free scenes from the Earth Search catalog (safe to run twice)
 - [x] Three spatial queries: scenes touching a region, how much of a region each scene covers (in square metres), and scenes within a distance of a point
 - [x] 6 automated tests against a real PostGIS database: schema rules, the seed script's row mapping, and the three queries
+- [x] CI: GitHub Actions starts a PostGIS service and runs the tests on every push, and fails if the database is missing instead of skipping the tests
 
 Not done yet:
 
-- [ ] CI: a GitHub Actions workflow is written (`.github/workflows/ci.yml`) but has not run yet, so I do not claim it works until it does
 - [ ] Stage 3: a FastAPI backend to manage regions and search the image catalog
 - [ ] Stage 4: a Next.js and TypeScript front end with Redux Toolkit
 - [ ] Stage 5: an NDVI layer computed with band math
