@@ -1,6 +1,6 @@
 """The shapes of the data the API sends and receives (Pydantic models)."""
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -25,7 +25,8 @@ class Scene(BaseModel):
 
 class PolygonGeometry(BaseModel):
     type: Literal["Polygon"]
-    coordinates: list[list[tuple[float, float]]]  # rings > points > exactly (lon, lat)
+    # rings > points > exactly (lon, lat), each within the valid range
+    coordinates: list[list[tuple[Annotated[float, Field(ge=-180, le=180)], Annotated[float, Field(ge=-90, le=90)]]]]
 
 
 class RegionCreate(BaseModel):

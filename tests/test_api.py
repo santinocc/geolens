@@ -33,3 +33,42 @@ def test_max_cloud_keeps_only_the_clearer_scenes(client, conn):
 def test_an_unknown_region_gives_a_404(client):
     response = client.get("/regions/00000000-0000-0000-0000-000000000000/scenes")
     assert response.status_code == 404
+
+
+def insert_region(conn):
+    """A 2 x 2 degree region and its id."""
+    return conn.execute(
+        "INSERT INTO regions (name, geom) VALUES (%s, ST_MakeEnvelope(0, 0, 2, 2, 4326)) RETURNING id",
+        ("Test region",),
+    ).fetchone()[0]
+
+
+def test_a_region_outside_the_valid_longitude_and_latitude_is_rejected(client):
+    off_the_map = {"type": "Polygon", "coordinates": [[[0, 0], [2, 0], [2, 95], [0, 95], [0, 0]]]}
+
+    response = client.post("/regions", json={"name": "Too far north", "geometry": off_the_map})
+
+    assert response.status_code == 422
+
+
+def test_scenes_near_a_point_come_nearest_first_with_their_distance(client, conn):
+    # One scene starts 1 degree of longitude east of the point, on the equator: about 111,319 m.
+    conn.execute(SCENE_SQL, ("east", "2026-01-01", 1, 1, 0, 2, 1, "https://example.com/e.tif"))
+
+    too_small = client.get("/scenes/near", params={"lon": 0, "lat": 0, "meters": 100_000})
+    big_enough = client.get("/scenes/near", params={"lon": 0, "lat": 0, "meters": 120_000})
+
+    assert too_small.json() == []
+    assert [scene["id"] for scene in big_enough.json()] == ["east"]
+    assert 111_000 < big_enough.json()[0]["metres_away"] < 112_000
+
+
+def test_the_to_date_includes_scenes_from_that_whole_day(client, conn):
+    region_id = insert_region(conn)
+    conn.execute(SCENE_SQL, ("afternoon", "2026-01-31 15:00", 1, 0, 0, 2, 2, "https://example.com/a.tif"))
+
+    on_the_day = client.get(f"/regions/{region_id}/scenes", params={"to": "2026-01-31"})
+    the_day_before = client.get(f"/regions/{region_id}/scenes", params={"to": "2026-01-30"})
+
+    assert [scene["id"] for scene in on_the_day.json()] == ["afternoon"]
+    assert the_day_before.json() == []
