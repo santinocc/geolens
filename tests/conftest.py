@@ -5,6 +5,7 @@ a database called geolens_test, then runs db/init/*.sql in order, so the tests s
 exactly the schema that `docker compose up` creates.
 """
 import os
+import re
 from pathlib import Path
 
 import psycopg
@@ -46,3 +47,22 @@ def conn(test_db_url):
     with psycopg.connect(test_db_url) as connection:
         yield connection
         connection.rollback()
+
+
+QUERIES_DIR = Path(__file__).resolve().parent.parent / "db" / "queries"
+
+
+@pytest.fixture
+def run_query(conn):
+    """Run one of the db/queries/*.sql files and return its rows.
+
+    The files use psql variables (:'region', :lon). psycopg does not know that syntax, so
+    this turns each one into a real parameter. A cast such as ::geography is left alone.
+    """
+    def run(filename, **params):
+        sql = (QUERIES_DIR / filename).read_text()
+        sql = sql.replace("%", "%%")                    # a literal % (even in a comment) must be doubled
+        sql = re.sub(r":'(\w+)'", r"%(\1)s", sql)       # :'region' -> %(region)s
+        sql = re.sub(r"(?<!:):([a-z_]\w*)", r"%(\1)s", sql)  # :lon -> %(lon)s
+        return conn.execute(sql, params).fetchall()
+    return run
