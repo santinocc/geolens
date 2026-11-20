@@ -10,7 +10,11 @@ from pathlib import Path
 
 import psycopg
 import pytest
+from fastapi.testclient import TestClient
 from psycopg.conninfo import make_conninfo
+
+from api.db import get_conn
+from api.main import app
 
 # Same local-development value as docker-compose.yml and .env.example.
 ADMIN_URL = os.environ.get("DATABASE_URL", "postgres://geolens:geolens@localhost:5433/geolens")
@@ -66,3 +70,15 @@ def run_query(conn):
         sql = re.sub(r"(?<!:):([a-z_]\w*)", r"%(\1)s", sql)  # :lon -> %(lon)s
         return conn.execute(sql, params).fetchall()
     return run
+
+
+@pytest.fixture
+def client(conn):
+    """The API, talking to the test database through the same rolled-back connection as `conn`.
+
+    Not used as `with TestClient(app)`, so the app's startup code (which opens the real pool)
+    does not run. The dependency override hands every request the test connection instead.
+    """
+    app.dependency_overrides[get_conn] = lambda: conn
+    yield TestClient(app)
+    app.dependency_overrides.clear()
