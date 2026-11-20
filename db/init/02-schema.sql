@@ -19,3 +19,7 @@ CREATE TABLE scenes (
 );
 CREATE INDEX scenes_footprint_gist ON scenes USING GIST (footprint);
 CREATE INDEX scenes_acquired_at ON scenes (acquired_at);
+
+-- Distance queries measure in metres, so they cast the footprint to geography.
+-- The cast hides the plain GiST index, so index the cast itself.
+CREATE INDEX scenes_footprint_geog_gist ON scenes USING GIST ((footprint::geography));
