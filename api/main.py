@@ -6,12 +6,14 @@ Interactive docs, generated from the code: http://localhost:8001/docs
 """
 from contextlib import asynccontextmanager
 
+from typing import Annotated
+
 import psycopg
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 
 from api import repository
 from api.db import get_conn, open_pool
-from api.schemas import Region, RegionCreate
+from api.schemas import Region, RegionCreate, Scene
 
 
 @asynccontextmanager
@@ -46,3 +48,15 @@ def create_region(region: RegionCreate, conn=Depends(get_conn)):
     except psycopg.errors.CheckViolation as error:
         # Pydantic checked the shape of the JSON. The database checks the geometry itself.
         raise HTTPException(status_code=422, detail=f"The database rejected the region: {error.diag.constraint_name}")
+
+
+@app.get("/scenes/near", response_model=list[Scene])
+def scenes_near(
+    lon: Annotated[float, Query(ge=-180, le=180)],
+    lat: Annotated[float, Query(ge=-90, le=90)],
+    meters: Annotated[float, Query(gt=0, le=500_000)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
+    conn=Depends(get_conn),
+):
+    """Scenes whose footprint comes within `meters` of a point, nearest first."""
+    return repository.scenes_near(conn, lon, lat, meters, limit)

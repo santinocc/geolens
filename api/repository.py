@@ -21,3 +21,19 @@ def create_region(conn, name, geometry):
         (name, json.dumps(geometry)),
     ).fetchone()
     return {"id": row[0], "name": row[1], "geometry": row[2]}
+
+
+def scenes_near(conn, lon, lat, meters, limit):
+    rows = conn.execute(
+        """
+        WITH p AS (SELECT ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography AS geog)
+        SELECT s.id, s.acquired_at, s.cloud_cover, s.cog_url,
+               ST_Distance(s.footprint::geography, p.geog) AS metres_away
+        FROM scenes s, p
+        WHERE ST_DWithin(s.footprint::geography, p.geog, %s)
+        ORDER BY metres_away, s.acquired_at DESC
+        LIMIT %s
+        """,
+        (lon, lat, meters, limit),
+    ).fetchall()
+    return [{"id": id, "acquired_at": acquired_at, "cloud_cover": cloud_cover, "cog_url": cog_url, "metres_away": metres_away} for id, acquired_at, cloud_cover, cog_url, metres_away in rows]
