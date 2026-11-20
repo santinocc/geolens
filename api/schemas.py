@@ -14,12 +14,13 @@ class Region(BaseModel):
 
 
 class Scene(BaseModel):
-    """A satellite scene found by a search. metres_away is set only by the near-a-point search."""
+    """A satellite scene found by a search. metres_away is set by the near-a-point search, covered_pct by the region search."""
     id: str
     acquired_at: datetime
     cloud_cover: float
     cog_url: str
     metres_away: float | None = None
+    covered_pct: float | None = None
 
 
 class PolygonGeometry(BaseModel):
