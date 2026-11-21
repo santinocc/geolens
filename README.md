@@ -18,7 +18,7 @@ Stage 3 of 5 is finished. This list shows only what is actually done.
 
 Not done yet:
 
-- [ ] Stage 4: a Next.js and TypeScript front end with Redux Toolkit. Started: the project builds and forwards `/api/...` to the API, and its page shows the Stage 1 satellite image on a React map with the regions from the API drawn on top. The scene search, picking a scene to show on the map, and the Redux store are not built yet (the regions are fetched with a plain `fetch` for now). The front end does not run in `docker-compose.yml` yet.
+- [ ] Stage 4: a Next.js and TypeScript front end with Redux Toolkit. Started: the project builds and forwards `/api/...` to the API, and its page shows the Stage 1 satellite image on a React map with the regions from the API drawn on top. The regions and scenes are fetched through RTK Query, but the scene search form, the results list, and picking a scene to show on the map are not built yet. The front end does not run in `docker-compose.yml` yet.
 - [ ] Stage 5: an NDVI layer computed with band math
 - [ ] The map page does not read from the API yet.
 - [ ] No tests for the web page.

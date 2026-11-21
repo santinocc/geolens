@@ -1,21 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 import MapView from "../components/MapView";
 import { DEFAULT_SCENE_URL } from "../lib/config";
+import { useGetRegionsQuery } from "../lib/api";
 import type { Region } from "../lib/types";
 
-// Temporary: step 4c replaces this fetch with RTK Query.
+// One stable empty array. Writing `data = []` inline would create a new array on every render,
+// and MapView's effect (which depends on `regions`) would then run on every render.
+const NO_REGIONS: Region[] = [];
+
 export default function Home() {
-  const [regions, setRegions] = useState<Region[]>([]);
+  const { data, isError } = useGetRegionsQuery();
 
-  useEffect(() => {
-    fetch("/api/regions")
-      .then((response) => response.json())
-      .then(setRegions)
-      .catch((error) => console.error("could not load regions", error));
-  }, []);
-
-  return <MapView regions={regions} sceneUrl={DEFAULT_SCENE_URL} />;
+  return (
+    <>
+      <MapView regions={data ?? NO_REGIONS} sceneUrl={DEFAULT_SCENE_URL} />
+      {isError && (
+        <p style={{ position: "absolute", top: 8, left: 8, margin: 0, padding: "4px 8px", background: "white" }}>
+          Could not load the regions. Is the API running?
+        </p>
+      )}
+    </>
+  );
 }
