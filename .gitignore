@@ -19,3 +19,4 @@ node_modules/
 frontend/next-env.d.ts
 frontend/AGENTS.md
 frontend/tsconfig.tsbuildinfo
+frontend/.env*.local

@@ -2,21 +2,20 @@
 
 import { useEffect, useState } from "react";
 
-// Temporary page for step 4a: proves the browser can reach the API through the proxy.
+import MapView from "../components/MapView";
+import { DEFAULT_SCENE_URL } from "../lib/config";
+import type { Region } from "../lib/types";
+
+// Temporary: step 4c replaces this fetch with RTK Query.
 export default function Home() {
-  const [status, setStatus] = useState("checking...");
+  const [regions, setRegions] = useState<Region[]>([]);
 
   useEffect(() => {
-    fetch("/api/health")
+    fetch("/api/regions")
       .then((response) => response.json())
-      .then((body) => setStatus(body.status))
-      .catch(() => setStatus("the API is not reachable"));
+      .then(setRegions)
+      .catch((error) => console.error("could not load regions", error));
   }, []);
 
-  return (
-    <main style={{ padding: 24 }}>
-      <h1>GeoLens</h1>
-      <p>API health: {status}</p>
-    </main>
-  );
+  return <MapView regions={regions} sceneUrl={DEFAULT_SCENE_URL} />;
 }

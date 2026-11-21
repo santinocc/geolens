@@ -18,7 +18,7 @@ Stage 3 of 5 is finished. This list shows only what is actually done.
 
 Not done yet:
 
-- [ ] Stage 4: a Next.js and TypeScript front end with Redux Toolkit. Started: the project exists, builds, and forwards `/api/...` to the API, and its only page shows the API's health check. The map, the region and scene search, and the Redux store are not built yet. The front end does not run in `docker-compose.yml` yet.
+- [ ] Stage 4: a Next.js and TypeScript front end with Redux Toolkit. Started: the project builds and forwards `/api/...` to the API, and its page shows the Stage 1 satellite image on a React map with the regions from the API drawn on top. The scene search, picking a scene to show on the map, and the Redux store are not built yet (the regions are fetched with a plain `fetch` for now). The front end does not run in `docker-compose.yml` yet.
 - [ ] Stage 5: an NDVI layer computed with band math
 - [ ] The map page does not read from the API yet.
 - [ ] No tests for the web page.
@@ -98,7 +98,7 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:3000>. For now it only shows the API's health check, fetched through Next.js: the browser calls `/api/health` on port 3000 and Next.js forwards it to the API, so the browser never needs the API's address. That address is read on the server from `API_URL` (default `http://localhost:8001`).
+Open <http://localhost:3000>. The browser calls the API through Next.js (for example `/api/regions` on port 3000), which forwards the request to the API, so the browser never needs the API's address. That address is read on the server from `API_URL` (default `http://localhost:8001`).
 
 `frontend/.npmrc` sets `legacy-peer-deps=true`, because npm 10 (the version that ships with Node 22) crashes while resolving Vitest's peer dependencies. That setting stops npm from installing peers by itself, so `vite`, which Vitest needs, is listed explicitly in `package.json`.
 
