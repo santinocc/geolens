@@ -14,3 +14,8 @@ node_modules/
 .idea/
 .vscode/
 .DS_Store
+
+# Front end
+frontend/next-env.d.ts
+frontend/AGENTS.md
+frontend/tsconfig.tsbuildinfo

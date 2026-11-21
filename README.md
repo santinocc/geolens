@@ -18,7 +18,7 @@ Stage 3 of 5 is finished. This list shows only what is actually done.
 
 Not done yet:
 
-- [ ] Stage 4: a Next.js and TypeScript front end with Redux Toolkit. It will also need two changes to the API: CORS (a browser page on another port cannot call it today) and running it from `docker-compose.yml` (today you start it with `uvicorn`).
+- [ ] Stage 4: a Next.js and TypeScript front end with Redux Toolkit. Started: the project exists, builds, and forwards `/api/...` to the API, and its only page shows the API's health check. The map, the region and scene search, and the Redux store are not built yet. The front end does not run in `docker-compose.yml` yet.
 - [ ] Stage 5: an NDVI layer computed with band math
 - [ ] The map page does not read from the API yet.
 - [ ] No tests for the web page.
@@ -37,7 +37,7 @@ Left out on purpose, to keep the project small: updating or deleting regions, au
 docker compose up -d --wait
 ```
 
-Then open <http://localhost:8080>. You should see Chiba and Tokyo Bay from a Sentinel-2 pass on 16 January 2026.
+This starts Titiler (tiles), nginx (the Stage 1 map page), the database, and the API. Then open <http://localhost:8080>. You should see Chiba and Tokyo Bay from a Sentinel-2 pass on 16 January 2026.
 
 - The first tiles take a few seconds, because Titiler reads them live from AWS in Oregon.
 - The white areas are outside the satellite's path.
@@ -65,13 +65,14 @@ The three sample regions are Chiba city, Tokyo Bay and Narita area.
 
 ### Run the API
 
-With the database up and the scenes loaded:
+`docker compose up` already runs the API, published on `127.0.0.1:8001` only (Titiler uses 8000). To work on the API with auto-reload instead, stop the container and run it from your own Python environment, with the database up and the scenes loaded:
 
 ```sh
+docker compose stop api
 .venv/bin/uvicorn api.main:app --port 8001 --reload
 ```
 
-Port 8001 avoids Titiler, which uses 8000. Open <http://localhost:8001/docs> for an interactive page generated from the code. The API refuses to start if it cannot reach the database. To use another database, set `DATABASE_URL` (see `.env.example`).
+Open <http://localhost:8001/docs> for an interactive page generated from the code. The API refuses to start if it cannot reach the database. To use another database, set `DATABASE_URL` (see `.env.example`).
 
 | Endpoint | What it does |
 |---|---|
@@ -86,6 +87,20 @@ Invalid input gets a `422` that names the field. An unknown region gets a `404`.
 ```sh
 curl "localhost:8001/scenes/near?lon=141.6&lat=35.6&meters=50000&limit=3"
 ```
+
+### Run the front end (work in progress)
+
+With the API up, in a second terminal (Node 22):
+
+```sh
+cd frontend
+npm install
+npm run dev
+```
+
+Open <http://localhost:3000>. For now it only shows the API's health check, fetched through Next.js: the browser calls `/api/health` on port 3000 and Next.js forwards it to the API, so the browser never needs the API's address. That address is read on the server from `API_URL` (default `http://localhost:8001`).
+
+`frontend/.npmrc` sets `legacy-peer-deps=true`, because npm 10 (the version that ships with Node 22) crashes while resolving Vitest's peer dependencies. That setting stops npm from installing peers by itself, so `vite`, which Vitest needs, is listed explicitly in `package.json`.
 
 ### Test
 
@@ -141,12 +156,13 @@ Earth Search catalog --- seed script (Python) ---> PostGIS (Docker, port 5433)
 ## Project layout
 
 ```
-docker-compose.yml  Titiler, nginx and the PostGIS database
+docker-compose.yml  Titiler, nginx, the PostGIS database and the API
 db/Dockerfile       PostGIS on the official Postgres image
 db/init/            extension, schema, sample regions (run once on an empty volume)
 db/queries/         the three spatial queries
 scripts/            the seed script
-api/                the FastAPI app: routes (main.py), SQL (repository.py), models (schemas.py), connection pool (db.py)
+api/                the FastAPI app: routes (main.py), SQL (repository.py), models (schemas.py), connection pool (db.py), Dockerfile
+frontend/           the Next.js and TypeScript front end (in progress)
 tests/              pytest tests against a real PostGIS database
 web/                the map page: index.html and map.js
 ```
