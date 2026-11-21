@@ -36,5 +36,26 @@ services:
       timeout: 3s
       retries: 15
 
+  # The API. Inside Docker it reaches the database as db:5432 (the container port,
+  # not the 5433 published on the host). The port is published on the loopback only,
+  # so the front end running on your machine can reach it; a real deployment would
+  # not publish it at all and let only the front end server call it.
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    environment:
+      DATABASE_URL: postgres://geolens:geolens@db:5432/geolens   # local development only, not a real secret
+    ports:
+      - "127.0.0.1:8001:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
 volumes:
   pgdata:
