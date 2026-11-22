@@ -1,12 +1,12 @@
 # GeoLens
 
-A small web map for exploring satellite imagery, built as a learning project. It serves real Sentinel-2 images of Chiba and Tokyo Bay as map tiles, keeps regions of interest and image footprints in PostGIS, and answers spatial questions about them, through a small FastAPI backend. A richer front end and a vegetation (NDVI) layer are planned.
+A small web map for exploring satellite imagery, built as a learning project. It serves real Sentinel-2 images of Chiba and Tokyo Bay as map tiles, keeps regions of interest and image footprints in PostGIS, and answers spatial questions about them, through a small FastAPI backend, with a Next.js front end to search scenes and show them on a map. A vegetation (NDVI) layer is planned.
 
-This is a learning project, built with guidance from Claude Code. The assistant set up the boilerplate (Docker, CI, the test fixtures, the API skeleton), explained each concept and reviewed my work. I wrote the core pieces myself, some from skeletons with blanks to fill in: the schema constraints, the seed script's row mapping, the three spatial queries, the request model for creating a region, the two search functions of the API, and most of the tests.
+This is a learning project, built with guidance from Claude Code. The assistant set up the boilerplate (Docker, CI, the test fixtures, the API skeleton), explained each concept and reviewed my work. I wrote the core pieces myself, some from skeletons with blanks to fill in: the schema constraints, the seed script's row mapping, the three spatial queries, the request model for creating a region, the two search functions of the API, the front end's search state (three reducers and their tests), the map's scene-swapping effect, and most of the tests.
 
 ## Status
 
-Stage 3 of 5 is finished. This list shows only what is actually done.
+Stage 4 of 5 is finished. This list shows only what is actually done.
 
 - [x] Stage 1: Titiler serves map tiles from a real Sentinel-2 image (a Cloud Optimized GeoTIFF on AWS Open Data), shown on a MapLibre map
 - [x] Stage 2: PostGIS holds regions of interest and image footprints, with spatial indexes
@@ -14,22 +14,24 @@ Stage 3 of 5 is finished. This list shows only what is actually done.
 - [x] Three spatial queries: scenes touching a region, how much of a region each scene covers (in square metres), and scenes within a distance of a point
 - [x] Stage 3: a FastAPI backend with five endpoints: health check, list and create regions, scenes within a distance of a point, and the scenes that touch a region (with date and cloud filters and the share of the region each one covers)
 - [x] 12 automated tests against a real PostGIS database: schema rules, the seed script's row mapping, the three queries, and six API tests (create and list a region, an out-of-range polygon, the cloud filter, the inclusive `to` date, the distance search, an unknown region)
-- [x] CI: GitHub Actions starts a PostGIS service and runs the tests on every push, and fails if the database is missing instead of skipping the tests
+- [x] Stage 4: a Next.js and TypeScript front end with Redux Toolkit. A MapLibre map shows a Sentinel-2 image with the regions from the API drawn on top. You pick a region, filter its scenes by dates and maximum cloud cover, and click a scene in the list to show it on the map
+- [x] 5 front-end tests for the search state (Vitest)
+- [x] CI: GitHub Actions starts a PostGIS service and runs the Python tests on every push, and fails if the database is missing instead of skipping the tests. A second job installs the front end, type-checks it, runs its tests and builds it
 
 Not done yet:
 
-- [ ] Stage 4: a Next.js and TypeScript front end with Redux Toolkit. Started: the project builds and forwards `/api/...` to the API, and its page shows the Stage 1 satellite image on a React map with the regions from the API drawn on top. The regions and scenes are fetched through RTK Query, and there is a region picker, a filter form (dates and maximum cloud cover) and a results list, with a Redux slice and reducer tests. Clicking a scene in the list shows that scene on the map. Known gap: every keystroke in the cloud box sends a request (no debounce). The front end does not run in `docker-compose.yml` yet.
 - [ ] Stage 5: an NDVI layer computed with band math
-- [ ] The map page does not read from the API yet.
-- [ ] No tests for the web page.
+- [ ] No tests for the map or the React components, only for the search state
+- [ ] Every keystroke in the cloud box sends a request (no debounce)
 
-Left out on purpose, to keep the project small: updating or deleting regions, authentication, and pagination (results are limited by a capped `limit`).
+Left out on purpose, to keep the project small: updating or deleting regions, authentication, pagination (results are limited by a capped `limit`), and running the front end in Docker Compose (it runs with `npm run dev`).
 
 ## Requirements
 
 - Docker with Docker Compose
 - Python 3.12 (for the seed script and the tests)
-- An internet connection: the imagery is read from AWS, the seed script calls the Earth Search catalog, and the page loads MapLibre from a CDN (unpkg)
+- Node 22 (see `frontend/.nvmrc`), for the front end
+- An internet connection: the imagery is read from AWS, the seed script calls the Earth Search catalog, and the Stage 1 page (port 8080) loads MapLibre from a CDN (unpkg)
 
 ## Run
 
@@ -88,9 +90,9 @@ Invalid input gets a `422` that names the field. An unknown region gets a `404`.
 curl "localhost:8001/scenes/near?lon=141.6&lat=35.6&meters=50000&limit=3"
 ```
 
-### Run the front end (work in progress)
+### Run the front end
 
-With the API up, in a second terminal (Node 22):
+With `docker compose up` running (the API and Titiler must be up) and the scenes loaded, in a second terminal (Node 22):
 
 ```sh
 cd frontend
@@ -98,7 +100,9 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:3000>. The browser calls the API through Next.js (for example `/api/regions` on port 3000), which forwards the request to the API, so the browser never needs the API's address. That address is read on the server from `API_URL` (default `http://localhost:8001`).
+Open <http://localhost:3000>. Pick a region (Chiba city, Tokyo Bay or Narita area), set a date range or a maximum cloud cover, and click a scene in the list. The map shows that scene, which takes a few seconds the first time because Titiler reads it live from AWS. If a scene does not cover the part of the map you are looking at, zoom out or pick another one.
+
+The browser calls the API through Next.js (for example `/api/regions` on port 3000), which forwards the request to the API, so the browser never needs the API's address. That address is read on the server from `API_URL` (default `http://localhost:8001`). Map tiles go straight from the browser to Titiler on port 8000.
 
 `frontend/.npmrc` sets `legacy-peer-deps=true`, because npm 10 (the version that ships with Node 22) crashes while resolving Vitest's peer dependencies. That setting stops npm from installing peers by itself, so `vite`, which Vitest needs, is listed explicitly in `package.json`.
 
@@ -109,6 +113,14 @@ Open <http://localhost:3000>. The browser calls the API through Next.js (for exa
 ```
 
 The tests need the database from `docker compose up`. They create and drop their own database, `geolens_test`, so they never touch your scenes. Without a database they are skipped locally, and fail when `REQUIRE_DB=1` is set (as CI does).
+
+The front end has its own checks, run from `frontend/`:
+
+```sh
+npm run typecheck
+npm test
+npm run build
+```
 
 ## How it works
 
@@ -123,6 +135,11 @@ Earth Search catalog --- seed script (Python) ---> PostGIS (Docker, port 5433)
                                                           ^
                                                           |  SQL with %s parameters
                                                     FastAPI (uvicorn, port 8001)
+                                                          ^
+                                                          |  /api/... forwarded by Next.js
+Browser: Next.js front end (port 3000) ------------------+
+   |  map tiles, straight from the browser
+   +--------------> Titiler (port 8000)
 ```
 
 - **Cloud Optimized GeoTIFF (COG):** a GeoTIFF arranged in blocks, with smaller overview copies, so a program can read just one area over HTTP.
@@ -147,10 +164,19 @@ Earth Search catalog --- seed script (Python) ---> PostGIS (Docker, port 5433)
 - **Dynamic filters use parameters.** The `WHERE` of the region search is built from fixed text fragments, and every client value goes in as a `%s` parameter. Dates are compared against the raw column (not `acquired_at::date`) so the index on `acquired_at` stays usable. The `to` date is inclusive.
 - **An unknown region is a `404`; a region with no matching scenes is `200` with an empty list.**
 
+## Design decisions (Stage 4)
+
+- **The browser talks to Next.js, and Next.js forwards `/api/...` to the API.** The browser never needs the API's address, and there is no cross-origin setup to get wrong. The cost is one extra hop. Map tiles skip it and go straight to Titiler, because proxying images would add load for nothing. The API port is still published on `127.0.0.1` so the front end can reach it during development; a real deployment would not publish it.
+- **Server data and screen choices are kept apart.** RTK Query fetches and caches the regions and scenes (and sends one request when React renders twice in development). A small Redux slice holds only what the user chose: the region, the filters and the selected scene. The cost is two mechanisms to learn instead of one.
+- **Changing the region forgets the selected scene but keeps the filters.** A scene belongs to a region, so keeping it would leave a scene on screen from a region that is no longer selected. The filters are preferences, so they carry over. The selected scene is stored as a whole object, not just its id: scenes do not change, and the map needs its `cog_url`. Tests pin each of these rules.
+- **The map is a live object, so it lives in a `useRef`, not in state.** One effect creates it and removes it on cleanup (React mounts components twice in development, and without the cleanup there would be two maps). A second effect keeps the region outlines in sync with the data, and a third changes the satellite image with `setTiles` when the selected scene changes. Only the changed part is updated, so the zoom and the outlines stay as they are.
+- **MapLibre 6.17.0, not 5.24.0.** `npm audit` reported a critical advisory in 5.x (an HTML sanitizer that this app does not use) whose fix exists only in 6.x. Version 6.19.0 was less than two weeks old when I upgraded, so I pinned 6.17.0. MapLibre 6 keeps its background worker in a separate file, so `MapView.tsx` tells it where that file is (`setWorkerUrl`); without that the console showed "Worker failed to load".
+- **Exact versions are pinned**, and I only chose releases that were at least two weeks old.
+
 ## Data and licenses
 
 - **Imagery:** Sentinel-2 L2A scenes from AWS Open Data, found through the Earth Search catalog. Free to use, no account needed. Contains modified Copernicus Sentinel data 2025–2026.
-- **Software:** [Titiler](https://github.com/developmentseed/titiler) (MIT) and [MapLibre GL JS](https://maplibre.org/) (BSD-3-Clause), PostgreSQL and PostGIS, FastAPI, Uvicorn, psycopg and pytest, all used as published. Versions are pinned in `docker-compose.yml`, `db/Dockerfile`, `web/index.html`, `requirements.txt` and `requirements-dev.txt`.
+- **Software:** [Titiler](https://github.com/developmentseed/titiler) (MIT) and [MapLibre GL JS](https://maplibre.org/) (BSD-3-Clause), PostgreSQL and PostGIS, FastAPI, Uvicorn, psycopg and pytest, and, for the front end, Next.js, React, Redux Toolkit and Vitest, all used as published. Versions are pinned in `docker-compose.yml`, `db/Dockerfile`, `web/index.html`, `requirements.txt`, `requirements-dev.txt` and `frontend/package.json`.
 - **Credentials:** the database user and password in `docker-compose.yml` and `.env.example` are throwaway values for local development, not real secrets.
 
 ## Project layout
@@ -162,7 +188,7 @@ db/init/            extension, schema, sample regions (run once on an empty volu
 db/queries/         the three spatial queries
 scripts/            the seed script
 api/                the FastAPI app: routes (main.py), SQL (repository.py), models (schemas.py), connection pool (db.py), Dockerfile
-frontend/           the Next.js and TypeScript front end (in progress)
+frontend/           the Next.js and TypeScript front end: app (page), components, lib (store, search slice, API client, map layers)
 tests/              pytest tests against a real PostGIS database
 web/                the map page: index.html and map.js
 ```
