@@ -2,6 +2,8 @@
 
 A small web map for exploring satellite imagery, built as a learning project. It serves real Sentinel-2 images of Chiba and Tokyo Bay as map tiles, keeps regions of interest and image footprints in PostGIS, and answers spatial questions about them, through a small FastAPI backend, with a Next.js front end to search scenes and show them on a map. A vegetation (NDVI) layer is planned.
 
+![The GeoLens page: Chiba city selected, a scene from 28 October chosen in the list, shown on the map with the three regions drawn on top](docs/screenshot.jpg)
+
 This is a learning project, built with guidance from Claude Code. The assistant set up the boilerplate (Docker, CI, the test fixtures, the API skeleton), explained each concept and reviewed my work. I wrote the core pieces myself, some from skeletons with blanks to fill in: the schema constraints, the seed script's row mapping, the three spatial queries, the request model for creating a region, the two search functions of the API, the front end's search state (three reducers and their tests), the map's scene-swapping effect, and most of the tests.
 
 ## Status
