@@ -4,6 +4,8 @@ A small web map for exploring satellite imagery, built as a learning project. It
 
 ![The GeoLens page: Chiba city selected, a scene from 28 October chosen in the list, shown on the map with the three regions drawn on top](docs/screenshot.jpg)
 
+![The same scene in the NDVI view: water and bare ground in orange and yellow, farmland and forest in green, with the colour legend on the left](docs/screenshot-ndvi.jpg)
+
 This is a learning project, built with guidance from Claude Code. The assistant set up the boilerplate (Docker, CI, the test fixtures, the API skeleton), explained each concept and reviewed my work. I wrote the core pieces myself, some from skeletons with blanks to fill in: the schema constraints, the seed script's row mapping, the three spatial queries, the request model for creating a region, the two search functions of the API, the front end's search state (the reducers and their tests), the function that builds the NDVI tile URL and the one that picks the map's tiles, the map's tile-swapping effect, and most of the tests.
 
 ## Status
