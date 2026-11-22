@@ -52,7 +52,6 @@ export default function MapView({ regions, sceneUrl }: Props) {
       mapRef.current = null;
       setReady(false);
     };
-    // The scene is applied at creation only; swapping it live is step 4e.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -62,6 +61,13 @@ export default function MapView({ regions, sceneUrl }: Props) {
     if (!ready || !mapRef.current) return;
     syncRegions(mapRef.current, regions);
   }, [ready, regions]);
+
+  // Effect 3: keeps the satellite image in sync with the selected scene's URL, and effect 1 uses it only for the first image
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const source = mapRef.current.getSource("satellite") as maplibregl.RasterTileSource | undefined;
+    source?.setTiles([tileUrl(sceneUrl)]);
+  }, [ready, sceneUrl]);
 
   return <div ref={containerRef} style={{ width: "100vw", height: "100vh" }} />;
 }

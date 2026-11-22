@@ -6,6 +6,7 @@ import RegionPicker from "../components/RegionPicker";
 import ScenesList from "../components/ScenesList";
 import { useGetRegionsQuery } from "../lib/api";
 import { DEFAULT_SCENE_URL } from "../lib/config";
+import { useAppSelector } from "../lib/hooks";
 import type { Region } from "../lib/types";
 
 // One stable empty array. Writing `data = []` inline would create a new array on every render,
@@ -14,10 +15,11 @@ const NO_REGIONS: Region[] = [];
 
 export default function Home() {
   const { data, isError } = useGetRegionsQuery();
+  const selectedScene = useAppSelector((state) => state.search.selectedScene);
 
   return (
     <div style={{ position: "relative" }}>
-      <MapView regions={data ?? NO_REGIONS} sceneUrl={DEFAULT_SCENE_URL} />
+      <MapView regions={data ?? NO_REGIONS} sceneUrl={selectedScene?.cog_url ?? DEFAULT_SCENE_URL} />
       <aside
         style={{
           position: "absolute",
