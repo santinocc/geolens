@@ -8,16 +8,21 @@ export type Filters = {
   maxCloud: number | null; // percent
 };
 
+// A union type: a value of this type can only be one of these two strings.
+export type View = "true-colour" | "ndvi";
+
 export type SearchState = {
   selectedRegionId: string | null;
   filters: Filters;
   selectedScene: Scene | null;
+  view: View;
 };
 
 export const initialState: SearchState = {
   selectedRegionId: null,
   filters: { from: null, to: null, maxCloud: null },
   selectedScene: null,
+  view: "true-colour",
 };
 
 const searchSlice = createSlice({
@@ -37,8 +42,11 @@ const searchSlice = createSlice({
     selectScene(state, action: PayloadAction<Scene | null>) {
       state.selectedScene = action.payload;
     },
+    setView(state, action: PayloadAction<View>) {
+      state.view = action.payload;
+    },
   },
 });
 
-export const { selectRegion, setFilters, clearFilters, selectScene } = searchSlice.actions;
+export const { selectRegion, setFilters, clearFilters, selectScene, setView } = searchSlice.actions;
 export default searchSlice.reducer;

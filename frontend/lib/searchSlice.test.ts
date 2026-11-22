@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import reducer, { clearFilters, initialState, selectRegion, selectScene, setFilters } from "./searchSlice";
+import reducer, { clearFilters, initialState, selectRegion, selectScene, setFilters, setView } from "./searchSlice";
 import type { Scene } from "./types";
 
 const scene: Scene = {
@@ -23,19 +23,31 @@ describe("searchSlice", () => {
     expect(after.filters).toEqual({ from: "2026-01-01", to: null, maxCloud: 10});
   });
     it("clearFilters resets every filter", () => {
-    const before = { ...initialState, filters: {from: null, to: "2026-02-01", maxCloud: 10}}
+    const before = { ...initialState, filters: {from: null, to: "2026-02-01", maxCloud: 10}};
     const after = reducer(before, clearFilters());
     expect(after.filters).toEqual(initialState.filters);
   });
     it("selectRegion stores the region and forgets the selected scene", () => {
-    const before = { ...initialState, selectedRegionId: "a", selectedScene: scene }
+    const before = { ...initialState, selectedRegionId: "a", selectedScene: scene };
     const after = reducer(before, selectRegion("b"));
     expect(after.selectedRegionId).toEqual("b");
     expect(after.selectedScene).toBeNull();
   });
     it("selectRegion keeps the filters", () => {
-    const before = { ...initialState, filters: { from: null, to: null, maxCloud: 10}}
+    const before = { ...initialState, filters: { from: null, to: null, maxCloud: 10}};
     const after = reducer(before, selectRegion("b"));
     expect(after.filters.maxCloud).toEqual(10);
+  });
+    it("setView stores the view", () => {
+    const state = reducer(initialState, setView("ndvi"));
+    expect(state.view).toEqual("ndvi");
+  });
+    it("the initial view is true color", () => {
+    expect(initialState.view).toEqual("true-colour");
+  });
+    it("changing the region keeps the view", () => {
+    const before = { ...initialState, view: "ndvi" as const};
+    const after = reducer(before, selectRegion("b"));
+    expect(after.view).toEqual("ndvi");
   });
 });
