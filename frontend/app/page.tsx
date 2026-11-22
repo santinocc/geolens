@@ -2,8 +2,10 @@
 
 import FilterForm from "../components/FilterForm";
 import MapView from "../components/MapView";
+import NdviLegend from "../components/NdviLegend";
 import RegionPicker from "../components/RegionPicker";
 import ScenesList from "../components/ScenesList";
+import ViewToggle from "../components/ViewToggle";
 import { useGetRegionsQuery } from "../lib/api";
 import { DEFAULT_SCENE_URL } from "../lib/config";
 import { useAppSelector } from "../lib/hooks";
@@ -37,6 +39,8 @@ export default function Home() {
         {isError && <p>Could not load the regions. Is the API running?</p>}
         <RegionPicker />
         <FilterForm />
+        <ViewToggle />
+        <NdviLegend />
         <ScenesList />
       </aside>
     </div>
