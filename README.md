@@ -1,14 +1,14 @@
 # GeoLens
 
-A small web map for exploring satellite imagery, built as a learning project. It serves real Sentinel-2 images of Chiba and Tokyo Bay as map tiles, keeps regions of interest and image footprints in PostGIS, and answers spatial questions about them, through a small FastAPI backend, with a Next.js front end to search scenes and show them on a map. A vegetation (NDVI) layer is planned.
+A small web map for exploring satellite imagery, built as a learning project. It serves real Sentinel-2 images of Chiba and Tokyo Bay as map tiles, keeps regions of interest and image footprints in PostGIS, and answers spatial questions about them, through a small FastAPI backend, with a Next.js front end to search scenes and show them on a map, in true colour or as an NDVI (vegetation) view.
 
 ![The GeoLens page: Chiba city selected, a scene from 28 October chosen in the list, shown on the map with the three regions drawn on top](docs/screenshot.jpg)
 
-This is a learning project, built with guidance from Claude Code. The assistant set up the boilerplate (Docker, CI, the test fixtures, the API skeleton), explained each concept and reviewed my work. I wrote the core pieces myself, some from skeletons with blanks to fill in: the schema constraints, the seed script's row mapping, the three spatial queries, the request model for creating a region, the two search functions of the API, the front end's search state (three reducers and their tests), the map's scene-swapping effect, and most of the tests.
+This is a learning project, built with guidance from Claude Code. The assistant set up the boilerplate (Docker, CI, the test fixtures, the API skeleton), explained each concept and reviewed my work. I wrote the core pieces myself, some from skeletons with blanks to fill in: the schema constraints, the seed script's row mapping, the three spatial queries, the request model for creating a region, the two search functions of the API, the front end's search state (the reducers and their tests), the function that builds the NDVI tile URL and the one that picks the map's tiles, the map's tile-swapping effect, and most of the tests.
 
 ## Status
 
-Stage 4 of 5 is finished. This list shows only what is actually done.
+Stage 5 of 5 is finished. This list shows only what is actually done.
 
 - [x] Stage 1: Titiler serves map tiles from a real Sentinel-2 image (a Cloud Optimized GeoTIFF on AWS Open Data), shown on a MapLibre map
 - [x] Stage 2: PostGIS holds regions of interest and image footprints, with spatial indexes
@@ -17,16 +17,18 @@ Stage 4 of 5 is finished. This list shows only what is actually done.
 - [x] Stage 3: a FastAPI backend with five endpoints: health check, list and create regions, scenes within a distance of a point, and the scenes that touch a region (with date and cloud filters and the share of the region each one covers)
 - [x] 12 automated tests against a real PostGIS database: schema rules, the seed script's row mapping, the three queries, and six API tests (create and list a region, an out-of-range polygon, the cloud filter, the inclusive `to` date, the distance search, an unknown region)
 - [x] Stage 4: a Next.js and TypeScript front end with Redux Toolkit. A MapLibre map shows a Sentinel-2 image with the regions from the API drawn on top. You pick a region, filter its scenes by dates and maximum cloud cover, and click a scene in the list to show it on the map
-- [x] 5 front-end tests for the search state (Vitest)
+- [x] Stage 5: an NDVI view. A button switches the selected scene from true colour to NDVI, computed by Titiler for each map tile from the red and near-infrared bands, with a colour legend
+- [x] 14 front-end tests (Vitest): the search state (region, filters, scene, view) and the functions that build the tile URLs
 - [x] CI: GitHub Actions starts a PostGIS service and runs the Python tests on every push, and fails if the database is missing instead of skipping the tests. A second job installs the front end, type-checks it, runs its tests and builds it
 
 Not done yet:
 
-- [ ] Stage 5: an NDVI layer computed with band math
-- [ ] No tests for the map or the React components, only for the search state
+- [ ] Tiles are slow on a slow connection: they are read live from AWS in Oregon, and the first view of a scene took 40 to 60 seconds per tile on a bad day (see the Stage 5 notes)
+- [ ] The NDVI values are not checked against a reference (see the Stage 5 notes)
+- [ ] No tests for the map or the React components, only for the search state and the URL builders
 - [ ] Every keystroke in the cloud box sends a request (no debounce)
 
-Left out on purpose, to keep the project small: updating or deleting regions, authentication, pagination (results are limited by a capped `limit`), and running the front end in Docker Compose (it runs with `npm run dev`).
+Left out on purpose, to keep the project small: updating or deleting regions, authentication, pagination (results are limited by a capped `limit`), NDVI statistics or time series, a loading indicator for the tiles, and running the front end in Docker Compose (it runs with `npm run dev`).
 
 ## Requirements
 
@@ -102,7 +104,7 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:3000>. Pick a region (Chiba city, Tokyo Bay or Narita area), set a date range or a maximum cloud cover, and click a scene in the list. The map shows that scene, which takes a few seconds the first time because Titiler reads it live from AWS. If a scene does not cover the part of the map you are looking at, zoom out or pick another one.
+Open <http://localhost:3000>. Pick a region (Chiba city, Tokyo Bay or Narita area), set a date range or a maximum cloud cover, and click a scene in the list. The map shows that scene. Then press NDVI to see the vegetation view of the same scene (the button is disabled until a scene is selected). The first view of a scene takes a few seconds on a good connection, because Titiler reads it live from AWS; see the Stage 5 notes for the slow case. If a scene does not cover the part of the map you are looking at, zoom out or pick another one.
 
 The browser calls the API through Next.js (for example `/api/regions` on port 3000), which forwards the request to the API, so the browser never needs the API's address. That address is read on the server from `API_URL` (default `http://localhost:8001`). Map tiles go straight from the browser to Titiler on port 8000.
 
@@ -174,6 +176,17 @@ Browser: Next.js front end (port 3000) ------------------+
 - **The map is a live object, so it lives in a `useRef`, not in state.** One effect creates it and removes it on cleanup (React mounts components twice in development, and without the cleanup there would be two maps). A second effect keeps the region outlines in sync with the data, and a third changes the satellite image with `setTiles` when the selected scene changes. Only the changed part is updated, so the zoom and the outlines stay as they are.
 - **MapLibre 6.17.0, not 5.24.0.** `npm audit` reported a critical advisory in 5.x (an HTML sanitizer that this app does not use) whose fix exists only in 6.x. Version 6.19.0 was less than two weeks old when I upgraded, so I pinned 6.17.0. MapLibre 6 keeps its background worker in a separate file, so `MapView.tsx` tells it where that file is (`setWorkerUrl`); without that the console showed "Worker failed to load".
 - **Exact versions are pinned**, and I only chose releases that were at least two weeks old.
+
+## Design decisions (Stage 5)
+
+- **NDVI is computed per tile, when the tile is asked for.** NDVI is (NIR - red) / (NIR + red): healthy plants absorb red light and reflect near-infrared, so the result runs from about -1 (water) through 0 (bare ground, cities) to about 0.9 (dense plants). Titiler reads the two bands (B04 and B08, 10 m pixels) and applies the formula to each tile (the `/stac` endpoint, band math). Nothing is stored, and any scene works at once. The alternatives were to precompute an NDVI file per scene (fast to serve, but storage and a batch job) or to compute it in the browser (more code, and it downloads raw bands). The cost of the chosen way is CPU and remote reads for every new tile.
+- **Titiler finds the two bands through the scene's catalog entry.** Our scene ids are the Earth Search catalog ids, so the front end builds the catalog URL from the id and Titiler reads the red and near-infrared files from it. That needs no database change. The alternatives were storing the band URLs in the database (an explicit schema change for something the catalog already knows) or rewriting the file name in the true-colour URL (fragile, and the `/cog` endpoint reads only one file).
+- **The formula is URL-encoded.** A raw `+` in a URL means a space, so `(b2-b1)/(b2+b1)` would reach Titiler as a different formula. A test pins this. In the formula `b1` is the first asset (red) and `b2` the second (near-infrared); asset names are not accepted there.
+- **The view is a choice like the others, so it lives in the Redux slice.** It stays when the region changes (it is a preference, like the filters). NDVI is shown only for a selected scene, so the NDVI button is disabled until one is picked: computing it for the default January image would mean mostly bare winter fields.
+- **One tested function picks the map's tiles.** `mapTilesUrl(scene, view)` returns the default image, the scene's true-colour image or the scene's NDVI. The map component receives the finished URL and knows nothing about scenes or views, and changing the view only swaps the tile URL of the existing source.
+- **How I checked the values:** I sampled single pixels of the 28 October 2026 scene: forest about 0.86, Tokyo Bay about 0.04 and the Chiba port area about -0.07, and the tile looked right (water pale, farmland and forest green). That is a sanity check, not a validation.
+- **Not settled: the scale and offset.** The catalog lists a scale of 0.0001 and an offset of -0.1 for these bands, and I did not apply them: the raw values did not look offset (water around 300, minimum 1) and the NDVI came out plausible. If the files do carry an offset, the real NDVI would differ somewhat. I did not check it against a reference.
+- **Speed depends on the connection to AWS.** Every tile is read live from AWS in Oregon. On a bad day from Japan, the handshake alone took 4 to 7 seconds, downloads ran near 100 KB/s, and a first tile took 40 to 60 seconds (the true-colour image was just as slow). I ruled out the catalog lookup, GDAL tuning settings and the NDVI maths as the cause. Once an area of a scene has been read, its tiles come back in about 0.1 seconds. A fix would be to run Titiler in AWS next to the data (which costs money) or to precompute; I did neither.
 
 ## Data and licenses
 
