@@ -4,7 +4,6 @@ import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 
-import { tileUrl } from "../lib/titiler";
 import type { Region } from "../lib/types";
 import { syncRegions } from "../lib/regionsLayer";
 
@@ -13,10 +12,10 @@ maplibregl.setWorkerUrl(new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", impor
 
 type Props = {
   regions: Region[];
-  sceneUrl: string;
+  tilesUrl: string;
 };
 
-export default function MapView({ regions, sceneUrl }: Props) {
+export default function MapView({ regions, tilesUrl }: Props) {
   // The map is a live object with methods and WebGL, so it lives in a ref, not in state
   // (and, later, never in Redux).
   const containerRef = useRef<HTMLDivElement>(null);
@@ -36,7 +35,7 @@ export default function MapView({ regions, sceneUrl }: Props) {
         sources: {
           satellite: {
             type: "raster",
-            tiles: [tileUrl(sceneUrl)],
+            tiles: [tilesUrl],
             tileSize: 256,
             minzoom: 8, // the image only exists between zoom 8 and 14
             maxzoom: 14,
@@ -65,12 +64,12 @@ export default function MapView({ regions, sceneUrl }: Props) {
     syncRegions(mapRef.current, regions);
   }, [ready, regions]);
 
-  // Effect 3: keeps the satellite image in sync with the selected scene's URL, and effect 1 uses it only for the first image
+  // Effect 3: keeps the satellite image in sync with the tile URL for the selected scene and view, and effect 1 uses it only for the first image
   useEffect(() => {
     if (!ready || !mapRef.current) return;
     const source = mapRef.current.getSource("satellite") as maplibregl.RasterTileSource | undefined;
-    source?.setTiles([tileUrl(sceneUrl)]);
-  }, [ready, sceneUrl]);
+    source?.setTiles([tilesUrl]);
+  }, [ready, tilesUrl]);
 
   return <div ref={containerRef} style={{ width: "100vw", height: "100vh" }} />;
 }
