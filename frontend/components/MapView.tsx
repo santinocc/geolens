@@ -1,12 +1,15 @@
 "use client";
 
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 
 import { tileUrl } from "../lib/titiler";
 import type { Region } from "../lib/types";
 import { syncRegions } from "../lib/regionsLayer";
+
+// MapLibre 6 ships its worker as a separate file. The bundler has to find it, so we say where it is.
+maplibregl.setWorkerUrl(new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).toString());
 
 type Props = {
   regions: Region[];
